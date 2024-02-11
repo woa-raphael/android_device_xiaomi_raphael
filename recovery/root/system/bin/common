@@ -1,0 +1,50 @@
+#!/sbin/bash
+win=/dev/block/sda32
+esp=/dev/block/sda33
+removeparts(){ for i in 33 32 31; do parted -s /dev/block/sda rm $i 2>/dev/null; done }
+formatwinesp(){
+mkfs.fat -F32 -s1 $esp -n ESPRAPHAEL
+mkfs.ntfs -f $win -L WINRAPHAEL
+}
+formatdata(){
+mke2fs -F -t ext4 /dev/block/sda31
+mke2fs -F -t ext4 /dev/block/by-name/metadata
+mke2fs -F -t ext4 /dev/block/by-name/cache
+}
+restore(){
+removeparts
+parted -s /dev/block/sda mkpart userdata ext4 11.7GB $max"GB"
+sgdisk --resize-table 31 /dev/block/sda
+sync
+formatdata
+}
+[ "$ignoreweirdness" != true ] && for i in 1 2 3 4; do test -e /dev/block/by-name/bk0$i || { echo "this script will NOT work with weird partition layouts! please restore the partition table by flashing gpt_both0 in fastboot!"; exit 1;}; done
+[ -e /config/usb_gadget/g1/configs/b.1/mass_storage.0 ] && echo "msc is enabled! aborting..." && echo "reboot and run the script again." && exit 1
+if getprop sys.usb.config|grep -q "mtp"; then
+echo "run the script again!";sleep 1
+setprop sys.usb.config adb
+rm /config/usb_gadget/g1/configs/b.1/f*
+exit
+fi
+blocksize=$(blockdev --getsize64 /dev/block/sda)
+if [[ $blocksize =~ ^574[0-9]{8}$ ]]; then max=57.5; aa=0.6 # this sucks
+elif [[ $blocksize =~ ^121[0-9]{9}$ ]]; then max=121
+elif [[ $blocksize =~ ^254[0-9]{9}$ ]]; then max=255  #  ignore # ok # vayu value
+elif [[ $blocksize =~ ^505[0-9]{9}$ ]]; then max=505 
+else echo "is this raphael?"; exit 1
+fi
+for i in sdcard data; do umount -lf /$i 2> /dev/null; done
+for i in esp win cache metadata; do umount -lf /dev/block/by-name/$i 2> /dev/null; done
+if [ "$ignoreweirdness" != true ]; then
+weirdparts=$(find_ /dev/block -regextype posix-extended -type b -regex '.*/sda(3[4-9]|[4-9][0-9])$')
+if [ -n "$weirdparts" ]; then
+echo -n "in order to use this script, your partition table has to be restored to the stock variant. ALL DATA WILL BE LOST. continue (y/n)? "
+read yn
+[[ $yn =~ ^[Yy].*$ ]] || { echo "can't proceed without restoring the table.";exit 1;}
+echo "restoring the stock partition layout now"
+for i in $weirdparts; do
+f="${i:14}"
+parted -s /dev/block/sda rm $f 2>/dev/null; done
+restore
+exit 0; fi
+fi
