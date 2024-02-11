@@ -31,7 +31,7 @@ if [[ $blocksize =~ ^574[0-9]{8}$ ]]; then max=57.5; aa=0.6 # this sucks
 elif [[ $blocksize =~ ^121[0-9]{9}$ ]]; then max=121
 elif [[ $blocksize =~ ^254[0-9]{9}$ ]]; then max=255  #  ignore # ok # vayu value
 elif [[ $blocksize =~ ^505[0-9]{9}$ ]]; then max=505 
-else echo "is this raphael?"; exit 1
+else echo "This is not raphael or please go to this Telegram group https://t.me/woaraphael if you have a 256gb model"; exit 1
 fi
 for i in sdcard data; do umount -lf /$i 2> /dev/null; done
 for i in esp win cache metadata; do umount -lf /dev/block/by-name/$i 2> /dev/null; done
