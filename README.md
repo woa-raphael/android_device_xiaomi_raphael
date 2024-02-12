@@ -8,6 +8,8 @@ Modified TWRP for raphael
 
 TO-DO:
 
+- tests
+
 - finish
 
 ## Compile
